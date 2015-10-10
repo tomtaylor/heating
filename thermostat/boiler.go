@@ -59,10 +59,8 @@ func (b *Boiler) RunLoop() {
 func (b *Boiler) sendCommand(fire bool) {
 	var arg string
 	if fire {
-		log.Println("Sending boiler 'on' command")
 		arg = "on"
 	} else {
-		log.Println("Sending boiler 'off' command")
 		arg = "off"
 	}
 
