@@ -41,11 +41,15 @@ func (t *Thermostat) RunLoop() {
 		case temp := <-t.temps:
 			log.Println("Temperature is", temp)
 			if temp >= t.targetTemp+tempRange {
-				log.Println("Over temperature, turning boiler off")
-				t.boiler.SetCurrentCommand(false)
+				if t.boiler.GetCurrentCommand() == true {
+					log.Println("Over temperature, turning boiler off")
+					t.boiler.SetCurrentCommand(false)
+				}
 			} else if temp <= t.targetTemp-tempRange {
-				log.Println("Under temperature, turning boiler on")
-				t.boiler.SetCurrentCommand(true)
+				if t.boiler.GetCurrentCommand() == false {
+					log.Println("Under temperature, turning boiler on")
+					t.boiler.SetCurrentCommand(true)
+				}
 			}
 		case <-time.After(interval):
 			t.temps <- t.getTemp()
