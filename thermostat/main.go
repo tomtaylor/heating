@@ -10,18 +10,33 @@ import (
 )
 
 var (
-	pin                = rpio.Pin(17)
-	device             = "/sys/bus/w1/devices/28-031572e41cff"
-	targetTemp float64 = 20.0
+	temp     float64 = 20.0
+	tempPath string
+	device   = ""
+	pin      = rpio.Pin(17)
 )
 
 func main() {
-	flag.Float64Var(&targetTemp, "temperature", 20.0, "Target temperature")
+	flag.Float64Var(&temp, "temp", 20.0, "Target temperature")
+	flag.StringVar(&tempPath, "tempPath", "", "Target temperature path")
+	flag.StringVar(&device, "device", "", "Thermometer device")
 	flag.Parse()
-	runServer()
-}
 
-func runServer() {
+	if device == "" {
+		log.Fatal("No device specified")
+	}
+
+	if tempPath != "" {
+		_, err := os.Stat(tempPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println("Starting thermostat with temperature from path:", tempPath)
+	} else {
+		log.Println("Starting thermostat with target temperature:", temp)
+	}
+
 	if err := rpio.Open(); err != nil {
 		log.Fatal(err)
 	}
@@ -29,10 +44,16 @@ func runServer() {
 	defer rpio.Close()
 	pin.Output()
 
-	log.Println("Starting thermostat with target temperature:", targetTemp)
+	log.Println("Using thermometer at", device)
 
 	boiler := NewBoiler(pin)
-	thermostat := NewThermostat(boiler, device, targetTemp)
+	thermostat := NewThermostat(boiler, device, temp)
+
+	if tempPath != "" {
+		tempPoller := NewTempPoller(thermostat, tempPath)
+		go tempPoller.RunLoop()
+	}
+
 	go thermostat.RunLoop()
 
 	// Handle SIGINT and SIGTERM.

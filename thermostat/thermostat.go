@@ -11,7 +11,7 @@ import (
 
 var (
 	tempRange float64       = 0.5
-	interval  time.Duration = 30 * time.Second
+	interval  time.Duration = 10 * time.Second
 )
 
 type Thermostat struct {
@@ -59,6 +59,10 @@ func (t *Thermostat) RunLoop() {
 
 func (t *Thermostat) Stop() {
 	t.done <- true
+}
+
+func (t *Thermostat) SetTemp(temp float64) {
+	t.targetTemp = temp
 }
 
 func (t *Thermostat) getTemp() float64 {
