@@ -1,38 +1,27 @@
 package main
 
 import (
-	"github.com/stianeikeland/go-rpio"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"time"
 )
 
 var (
-	shortDelay    = 250 * time.Microsecond
-	longDelay     = 500 * time.Microsecond
-	preambleDelay = 1000 * time.Microsecond
-	onData        = []bool{
-		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-		true, false, true, false, true, true, true, true, false, false,
-	}
-	offData = []bool{
-		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-		false, false, false, false, false, false, false, false, false, false,
-	}
 	transmitInterval = time.Second * 15
 )
 
 type Boiler struct {
 	commands       chan bool
 	done           chan bool
-	pin            rpio.Pin
 	currentCommand bool
 }
 
-func NewBoiler(pin rpio.Pin) *Boiler {
+func NewBoiler() *Boiler {
 	return &Boiler{
 		commands:       make(chan bool, 1),
 		done:           make(chan bool),
-		pin:            pin,
 		currentCommand: false,
 	}
 }
@@ -68,43 +57,26 @@ func (b *Boiler) RunLoop() {
 }
 
 func (b *Boiler) sendCommand(fire bool) {
+	var arg string
 	if fire {
 		log.Println("Sending boiler 'on' command")
+		arg = "on"
 	} else {
 		log.Println("Sending boiler 'off' command")
+		arg = "off"
 	}
 
-	for i := 0; i < 2; i++ {
-		b.sendPreamble()
-		if fire {
-			b.sendData(onData)
-		} else {
-			b.sendData(offData)
-		}
+	wd, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
 	}
-}
 
-func (b *Boiler) sendPreamble() {
-	for i := 0; i < 4; i++ {
-		b.pin.High()
-		time.Sleep(preambleDelay)
-		b.pin.Low()
-		time.Sleep(preambleDelay)
-	}
-}
+	bin := filepath.Join(wd, "boiler_control")
 
-func (b *Boiler) sendData(data []bool) {
-	for _, bit := range data {
-		if bit {
-			b.pin.High()
-			time.Sleep(longDelay)
-			b.pin.Low()
-			time.Sleep(shortDelay)
-		} else {
-			b.pin.High()
-			time.Sleep(shortDelay)
-			b.pin.Low()
-			time.Sleep(longDelay)
-		}
+	args := []string{arg}
+	cmd := exec.Command(bin, args...)
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
 	}
 }

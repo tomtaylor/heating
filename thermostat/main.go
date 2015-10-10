@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/stianeikeland/go-rpio"
 	"log"
 	"os"
 	"os/signal"
@@ -13,7 +12,6 @@ var (
 	temp     float64 = 20.0
 	tempPath string
 	device   = ""
-	pin      = rpio.Pin(17)
 )
 
 func main() {
@@ -37,16 +35,9 @@ func main() {
 		log.Println("Starting thermostat with target temperature:", temp)
 	}
 
-	if err := rpio.Open(); err != nil {
-		log.Fatal(err)
-	}
-
-	defer rpio.Close()
-	pin.Output()
-
 	log.Println("Using thermometer at", device)
 
-	boiler := NewBoiler(pin)
+	boiler := NewBoiler()
 	thermostat := NewThermostat(boiler, device, temp)
 
 	if tempPath != "" {
