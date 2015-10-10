@@ -18,6 +18,7 @@ var (
 		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
 		false, false, false, false, false, false, false, false, false, false,
 	}
+	interval = time.Second * 15
 )
 
 type Boiler struct {
@@ -58,7 +59,7 @@ func (b *Boiler) RunLoop() {
 		case command := <-b.commands:
 			b.currentCommand = command
 			b.sendCommand(command)
-		case <-time.After(30 * time.Second):
+		case <-time.After(interval):
 			b.commands <- b.currentCommand
 		case <-b.done:
 			break
