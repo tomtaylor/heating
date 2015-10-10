@@ -37,7 +37,9 @@ func NewBoiler(pin rpio.Pin) *Boiler {
 }
 
 func (b *Boiler) SetCurrentCommand(isOn bool) {
-	b.commands <- isOn
+	if isOn != b.currentCommand {
+		b.commands <- isOn
+	}
 }
 
 func (b *Boiler) GetCurrentCommand() bool {
@@ -49,6 +51,8 @@ func (b *Boiler) Stop() {
 }
 
 func (b *Boiler) RunLoop() {
+	b.commands <- b.currentCommand
+
 	for {
 		select {
 		case command := <-b.commands:
@@ -63,15 +67,20 @@ func (b *Boiler) RunLoop() {
 }
 
 func (b *Boiler) sendCommand(fire bool) {
-	log.Println("Boiler %s", fire)
-	//for i := 0; i < 2; i++ {
-	//b.sendPreamble()
-	//if fire {
-	//b.sendData(onData)
-	//} else {
-	//b.sendData(offData)
-	//}
-	//}
+	if fire {
+		log.Println("Sending boiler 'on' command")
+	} else {
+		log.Println("Sending boiler 'off' command")
+	}
+
+	for i := 0; i < 2; i++ {
+		b.sendPreamble()
+		if fire {
+			b.sendData(onData)
+		} else {
+			b.sendData(offData)
+		}
+	}
 }
 
 func (b *Boiler) sendPreamble() {
