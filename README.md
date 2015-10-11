@@ -2,7 +2,8 @@
 
 Here's some code to make a Raspberry Pi control a Tower RFWRT wireless
 thermostat. It's adaptable to other makes and models, but this is the one I've
-got.
+got. [More info about reverse engineering the Tower
+RFWRT.](http://scraplab.net/reverse-engineering-a-wireless-thermostat/)
 
 There's two bits. A C executable, called `boiler_control`, which when passed an
 `on` or `off` argument, will send the appropriate signal to the heating control
