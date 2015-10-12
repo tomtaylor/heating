@@ -90,6 +90,9 @@ func (hk *HomeKitService) updateState() {
 	temperature := hk.thermostat.Temperature()
 	hk.hkThermostat.SetTemperature(temperature)
 
+	targetTemperature := hk.thermostat.TargetTemperature()
+	hk.hkThermostat.SetTargetTemperature(targetTemperature)
+
 	if hk.thermostat.IsOn() {
 		hk.hkThermostat.SetMode(model.HeatCoolModeHeat)
 	} else {
