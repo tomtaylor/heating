@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"log"
+	"github.com/brutella/log"
 	"os"
 	"strconv"
 	"time"
@@ -47,7 +47,7 @@ func (tp *TempPoller) Stop() {
 func (tp *TempPoller) updateTemp() {
 	temp := tp.PollTemp()
 	if temp != tp.lastTemp {
-		log.Println("Setting thermostat target temperature to", temp)
+		log.Println("[INFO] Setting thermostat target temperature to", temp)
 		tp.thermostat.targetTemp = temp
 		tp.lastTemp = temp
 	}

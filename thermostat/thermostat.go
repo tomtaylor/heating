@@ -1,11 +1,7 @@
 package main
 
 import (
-	"bufio"
-	"log"
-	"os"
-	"strconv"
-	"strings"
+	"github.com/brutella/log"
 	"time"
 )
 
@@ -15,44 +11,47 @@ var (
 )
 
 type Thermostat struct {
-	boiler     *Boiler
-	device     string
-	temps      chan float64
-	done       chan bool
-	targetTemp float64
+	boiler      *Boiler
+	thermometer *Thermometer
+	temps       chan float64
+	done        chan bool
+	targetTemp  float64
+	isOn        bool
 }
 
-func NewThermostat(boiler *Boiler, device string, targetTemp float64) *Thermostat {
+func NewThermostat(boiler *Boiler, thermometer *Thermometer, targetTemp float64) *Thermostat {
 	return &Thermostat{
-		temps:      make(chan float64, 1),
-		done:       make(chan bool),
-		boiler:     boiler,
-		device:     device,
-		targetTemp: targetTemp,
+		temps:       make(chan float64, 1),
+		done:        make(chan bool),
+		boiler:      boiler,
+		thermometer: thermometer,
+		targetTemp:  targetTemp,
 	}
 }
 
 func (t *Thermostat) RunLoop() {
 	go t.boiler.RunLoop()
-	t.temps <- t.getTemp()
+	t.temps <- t.Temperature()
 
 	for {
 		select {
 		case temp := <-t.temps:
-			log.Println("Temperature is", temp)
+			log.Println("[INFO] Temperature is", temp)
 			if temp >= t.targetTemp+tempRange {
 				if t.boiler.GetCurrentCommand() == true {
-					log.Println("Over temperature, turning boiler off")
+					log.Println("[INFO] Over temperature, turning boiler off")
 					t.boiler.SetCurrentCommand(false)
+					t.isOn = false
 				}
 			} else if temp <= t.targetTemp-tempRange {
 				if t.boiler.GetCurrentCommand() == false {
-					log.Println("Under temperature, turning boiler on")
+					log.Println("[INFO] Under temperature, turning boiler on")
 					t.boiler.SetCurrentCommand(true)
+					t.isOn = true
 				}
 			}
 		case <-time.After(interval):
-			t.temps <- t.getTemp()
+			t.temps <- t.Temperature()
 		case <-t.done:
 			break
 		}
@@ -65,38 +64,18 @@ func (t *Thermostat) Stop() {
 	t.done <- true
 }
 
-func (t *Thermostat) SetTemp(temp float64) {
+func (t *Thermostat) SetTargetTemperature(temp float64) {
 	t.targetTemp = temp
 }
 
-func (t *Thermostat) getTemp() float64 {
-	path := device + "/w1_slave"
+func (t *Thermostat) TargetTemperature() float64 {
+	return t.targetTemp
+}
 
-	file, err := os.Open(path)
-	if err != nil {
-		log.Fatal(err)
-	}
+func (t *Thermostat) Temperature() float64 {
+	return t.thermometer.Temperature()
+}
 
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-
-	var lines []string
-
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	if lines[0][len(lines[0])-3:] != "YES" {
-		log.Fatal("Temperature doesn't seem to be valid")
-	}
-
-	line := lines[1]
-	l := strings.LastIndexAny(line, "t=")
-	celsius, err := strconv.ParseFloat(line[l+1:], 64)
-	if err != nil {
-		log.Fatal("Could not convert temperature from device")
-	}
-
-	return (celsius / 1000.0)
+func (t *Thermostat) IsOn() bool {
+	return t.isOn
 }
