@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+var (
+	defaultOnTemp  = 20.0
+	defaultOffTemp = 17.0
+)
+
 type HomeKitService struct {
 	thermostat   *Thermostat
 	done         chan bool
@@ -28,7 +33,19 @@ func NewHomeKitService(thermostat *Thermostat) *HomeKitService {
 	})
 
 	hkThermostat.OnTargetModeChange(func(mode model.HeatCoolModeType) {
-		log.Println("[WARN] HomeKit requested thermostat to change to", mode, "but this does nothing yet")
+		log.Println("[INFO] HomeKit requested thermostat to change to", mode)
+
+		switch mode {
+		case model.HeatCoolModeHeat:
+			log.Println("[INFO] HomeKit setting thermostat to default on temp of", defaultOnTemp)
+			thermostat.targetTemp = defaultOnTemp
+		case model.HeatCoolModeOff:
+			log.Println("[INFO] HomeKit setting thermostat to default off temp of", defaultOffTemp)
+			thermostat.targetTemp = defaultOffTemp
+		case model.HeatCoolModeAuto, model.HeatCoolModeCool:
+			hkThermostat.SetTargetMode(model.HeatCoolModeHeat)
+		}
+
 	})
 
 	transport, err := hap.NewIPTransport("24282428", hkThermostat.Accessory)
@@ -50,7 +67,6 @@ func (hk *HomeKitService) RunLoop() {
 	hk.updateState()
 
 	go func() {
-
 		for {
 			select {
 			case <-time.After(10 * time.Second):
