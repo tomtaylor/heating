@@ -1,13 +1,16 @@
 package main
 
 import (
+	"github.com/RobinUS2/golang-moving-average"
 	"github.com/brutella/log"
 	"time"
 )
 
 var (
-	tempRange float64       = 0.5
-	interval  time.Duration = 10 * time.Second
+	minUnder            = 0.3
+	maxOver             = 0.2
+	interval            = 10 * time.Second
+	averageTempDuration = 3 * time.Minute
 )
 
 type Thermostat struct {
@@ -32,18 +35,23 @@ func NewThermostat(boiler *Boiler, thermometer *Thermometer, targetTemp float64)
 func (t *Thermostat) RunLoop() {
 	go t.boiler.RunLoop()
 	t.temps <- t.Temperature()
+	samples := int(averageTempDuration / interval)
+	ma := movingaverage.New(samples)
 
 	for {
 		select {
 		case temp := <-t.temps:
-			log.Println("[INFO] Temperature is", temp)
-			if temp >= t.targetTemp+tempRange {
+			ma.Add(temp)
+			averageTemp := ma.Avg()
+
+			log.Printf("[INFO] Temperature over last 3 minutes is %.2f°C\n", averageTemp)
+			if averageTemp >= t.targetTemp+maxOver {
 				if t.boiler.GetCurrentCommand() == true {
 					log.Println("[INFO] Over temperature, turning boiler off")
 					t.boiler.SetCurrentCommand(false)
 					t.isOn = false
 				}
-			} else if temp <= t.targetTemp-tempRange {
+			} else if averageTemp <= t.targetTemp-minUnder {
 				if t.boiler.GetCurrentCommand() == false {
 					log.Println("[INFO] Under temperature, turning boiler on")
 					t.boiler.SetCurrentCommand(true)
