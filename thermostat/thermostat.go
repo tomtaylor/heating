@@ -8,7 +8,7 @@ import (
 
 var (
 	minUnder            = 0.3
-	maxOver             = 0.2
+	maxOver             = 0.0
 	interval            = 10 * time.Second
 	averageTempDuration = 3 * time.Minute
 )
