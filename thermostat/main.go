@@ -43,8 +43,10 @@ func main() {
 
 	boiler := NewBoiler()
 	thermometer := NewThermometer(device)
+	go thermometer.RunLoop()
+
 	thermostat := NewThermostat(boiler, thermometer, temp)
-	api := NewAPI(thermostat)
+	go thermostat.RunLoop()
 
 	if tempPath != "" {
 		tempPoller := NewTempPoller(thermostat, tempPath)
@@ -52,7 +54,7 @@ func main() {
 		go tempPoller.RunLoop()
 	}
 
-	go thermostat.RunLoop()
+	api := NewAPI(thermostat)
 	go api.RunLoop()
 
 	homekitService := NewHomeKitService(thermostat)

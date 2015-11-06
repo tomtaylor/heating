@@ -1,22 +1,18 @@
 package main
 
 import (
-	"github.com/RobinUS2/golang-moving-average"
 	"github.com/brutella/log"
 	"time"
 )
 
 var (
-	minUnder            = 0.3
-	maxOver             = 0.0
-	interval            = 10 * time.Second
-	averageTempDuration = 3 * time.Minute
+	minUnder = 0.3
+	maxOver  = 0.0
 )
 
 type Thermostat struct {
 	boiler      *Boiler
 	thermometer *Thermometer
-	temps       chan float64
 	done        chan bool
 	targetTemp  float64
 	isOn        bool
@@ -24,7 +20,6 @@ type Thermostat struct {
 
 func NewThermostat(boiler *Boiler, thermometer *Thermometer, targetTemp float64) *Thermostat {
 	return &Thermostat{
-		temps:       make(chan float64, 1),
 		done:        make(chan bool),
 		boiler:      boiler,
 		thermometer: thermometer,
@@ -34,32 +29,25 @@ func NewThermostat(boiler *Boiler, thermometer *Thermometer, targetTemp float64)
 
 func (t *Thermostat) RunLoop() {
 	go t.boiler.RunLoop()
-	t.temps <- t.Temperature()
-	samples := int(averageTempDuration / interval)
-	ma := movingaverage.New(samples)
 
 	for {
 		select {
-		case temp := <-t.temps:
-			ma.Add(temp)
-			averageTemp := ma.Avg()
+		case <-time.After(interval):
+			temp = t.thermometer.Temperature()
 
-			log.Printf("[INFO] Temperature over last 3 minutes is %.2f°C\n", averageTemp)
-			if averageTemp >= t.targetTemp+maxOver {
+			if temp >= t.targetTemp+maxOver {
 				if t.boiler.GetCurrentCommand() == true {
 					log.Println("[INFO] Over temperature, turning boiler off")
 					t.boiler.SetCurrentCommand(false)
 					t.isOn = false
 				}
-			} else if averageTemp <= t.targetTemp-minUnder {
+			} else if temp <= t.targetTemp-minUnder {
 				if t.boiler.GetCurrentCommand() == false {
 					log.Println("[INFO] Under temperature, turning boiler on")
 					t.boiler.SetCurrentCommand(true)
 					t.isOn = true
 				}
 			}
-		case <-time.After(interval):
-			t.temps <- t.Temperature()
 		case <-t.done:
 			break
 		}
