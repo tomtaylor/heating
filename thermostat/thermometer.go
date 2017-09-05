@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	interval            = 10 * time.Second
+	thermometerInterval = 10 * time.Second
 	averageTempDuration = 3 * time.Minute
 )
 
@@ -32,7 +32,7 @@ func NewThermometer(device string) *Thermometer {
 
 func (t *Thermometer) RunLoop() {
 	t.temps <- t.getTemperature()
-	samples := int(averageTempDuration / interval)
+	samples := int(averageTempDuration / thermometerInterval)
 	ma := movingaverage.New(samples)
 
 	for {
@@ -41,7 +41,7 @@ func (t *Thermometer) RunLoop() {
 			ma.Add(temp)
 			t.temperature = ma.Avg()
 			log.Printf("[INFO] Temperature over last 3 minutes is %.2f°C\n", t.temperature)
-		case <-time.After(interval):
+		case <-time.After(thermometerInterval):
 			t.temps <- t.getTemperature()
 		case <-t.done:
 			break

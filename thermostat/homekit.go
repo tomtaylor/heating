@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/brutella/hc/hap"
-	"github.com/brutella/hc/model"
-	"github.com/brutella/hc/model/accessory"
+	"github.com/brutella/hc"
+	"github.com/brutella/hc/accessory"
+	"github.com/brutella/hc/characteristic"
 	"github.com/brutella/log"
 	"time"
 )
@@ -14,50 +14,51 @@ var (
 )
 
 type HomeKitService struct {
-	thermostat   *Thermostat
-	done         chan bool
-	hkThermostat model.Thermostat
-	transport    hap.Transport
+	thermostat *Thermostat
+	done       chan bool
+	accessory  accessory.Thermostat
+	transport  hc.Transport
 }
 
 func NewHomeKitService(thermostat *Thermostat) *HomeKitService {
-	thermostatInfo := model.Info{
+	info := accessory.Info{
 		Name: "Thermostat",
 	}
 
-	hkThermostat := accessory.NewThermostat(thermostatInfo, temp, 17, 25, 0.5)
-	hkThermostat.SetTargetMode(model.HeatCoolModeHeat)
-	hkThermostat.OnTargetTempChange(func(temp float64) {
-		log.Println("[INFO] HomeKit requested thermostat to change to", temp)
+	acc := accessory.NewThermostat(info, temp, 17, 25, 0.5)
+	acc.Thermostat.TargetHeatingCoolingState.UpdateValue(characteristic.TargetHeatingCoolingStateHeat)
+	acc.Thermostat.TargetTemperature.OnValueRemoteUpdate(func(temp float64) {
+		log.Println("[INFO] HomeKit requested thermostat temperature change to", temp)
 		thermostat.targetTemp = temp
 	})
 
-	hkThermostat.OnTargetModeChange(func(mode model.HeatCoolModeType) {
-		log.Println("[INFO] HomeKit requested thermostat to change to", mode)
+	acc.Thermostat.TargetHeatingCoolingState.OnValueRemoteUpdate(func(mode int) {
+		log.Println("[INFO] HomeKit requested thermostat mode change to", mode)
 
 		switch mode {
-		case model.HeatCoolModeHeat:
+		case characteristic.TargetHeatingCoolingStateHeat:
 			log.Println("[INFO] HomeKit setting thermostat to default on temp of", defaultOnTemp)
 			thermostat.targetTemp = defaultOnTemp
-		case model.HeatCoolModeOff:
+		case characteristic.TargetHeatingCoolingStateOff:
 			log.Println("[INFO] HomeKit setting thermostat to default off temp of", defaultOffTemp)
 			thermostat.targetTemp = defaultOffTemp
-		case model.HeatCoolModeAuto, model.HeatCoolModeCool:
-			hkThermostat.SetTargetMode(model.HeatCoolModeHeat)
+		case characteristic.TargetHeatingCoolingStateAuto, characteristic.TargetHeatingCoolingStateCool:
+			acc.Thermostat.TargetHeatingCoolingState.UpdateValue(characteristic.TargetHeatingCoolingStateHeat)
 		}
 
 	})
 
-	transport, err := hap.NewIPTransport("24282428", hkThermostat.Accessory)
+	config := hc.Config{Pin: "24282428"}
+	transport, err := hc.NewIPTransport(config, acc.Accessory)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	t := HomeKitService{
-		thermostat:   thermostat,
-		done:         make(chan bool),
-		hkThermostat: hkThermostat,
-		transport:    transport,
+		thermostat: thermostat,
+		done:       make(chan bool),
+		accessory:  *acc,
+		transport:  transport,
 	}
 
 	return &t
@@ -67,12 +68,13 @@ func (hk *HomeKitService) RunLoop() {
 	hk.updateState()
 
 	go func() {
+	Loop:
 		for {
 			select {
 			case <-time.After(10 * time.Second):
 				hk.updateState()
 			case <-hk.done:
-				break
+				break Loop
 			}
 		}
 
@@ -88,14 +90,14 @@ func (hk *HomeKitService) Stop() {
 
 func (hk *HomeKitService) updateState() {
 	temperature := hk.thermostat.Temperature()
-	hk.hkThermostat.SetTemperature(temperature)
+	hk.accessory.Thermostat.CurrentTemperature.UpdateValue(temperature)
 
 	targetTemperature := hk.thermostat.TargetTemperature()
-	hk.hkThermostat.SetTargetTemperature(targetTemperature)
+	hk.accessory.Thermostat.TargetTemperature.UpdateValue(targetTemperature)
 
 	if hk.thermostat.IsOn() {
-		hk.hkThermostat.SetMode(model.HeatCoolModeHeat)
+		hk.accessory.Thermostat.CurrentHeatingCoolingState.UpdateValue(characteristic.CurrentHeatingCoolingStateHeat)
 	} else {
-		hk.hkThermostat.SetMode(model.HeatCoolModeOff)
+		hk.accessory.Thermostat.CurrentHeatingCoolingState.UpdateValue(characteristic.CurrentHeatingCoolingStateOff)
 	}
 }

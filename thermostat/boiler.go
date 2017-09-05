@@ -43,6 +43,7 @@ func (b *Boiler) Stop() {
 func (b *Boiler) RunLoop() {
 	b.commands <- b.currentCommand
 
+Loop:
 	for {
 		select {
 		case command := <-b.commands:
@@ -51,7 +52,7 @@ func (b *Boiler) RunLoop() {
 		case <-time.After(transmitInterval):
 			b.commands <- b.currentCommand
 		case <-b.done:
-			break
+			break Loop
 		}
 	}
 }

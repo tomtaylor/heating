@@ -6,8 +6,9 @@ import (
 )
 
 var (
-	minUnder = 0.3
-	maxOver  = 0.0
+	minUnder           = 0.2
+	maxOver            = 0.0
+	thermostatInterval = 60 * time.Second
 )
 
 type Thermostat struct {
@@ -30,9 +31,10 @@ func NewThermostat(boiler *Boiler, thermometer *Thermometer, targetTemp float64)
 func (t *Thermostat) RunLoop() {
 	go t.boiler.RunLoop()
 
+Loop:
 	for {
 		select {
-		case <-time.After(interval):
+		case <-time.After(thermostatInterval):
 			temp = t.thermometer.Temperature()
 
 			if temp >= t.targetTemp+maxOver {
@@ -49,7 +51,7 @@ func (t *Thermostat) RunLoop() {
 				}
 			}
 		case <-t.done:
-			break
+			break Loop
 		}
 	}
 

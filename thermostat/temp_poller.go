@@ -30,12 +30,13 @@ func NewTempPoller(thermostat *Thermostat, path string) *TempPoller {
 func (tp *TempPoller) RunLoop() {
 	tp.updateTemp()
 
+Loop:
 	for {
 		select {
 		case <-time.After(pollerInterval):
 			tp.updateTemp()
 		case <-tp.done:
-			break
+			break Loop
 		}
 	}
 }
